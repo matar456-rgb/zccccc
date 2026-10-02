@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="نظام إدارة الكوبونات المتقدم - Advanced Coupon System">
+    <meta name="theme-color" content="#2563eb">
+
+    <title>نظام إدارة الكوبونات المتقدم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        * {
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border-right: 3px solid #22c55e;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #7f1d1d;
+            border-right: 3px solid #ef4444;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            color: #0c4a6e;
+            border-right: 3px solid #0ea5e9;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen py-8 px-4">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-bold text-white mb-2">
+                    <i class="fas fa-ticket-alt ml-2"></i>نظام إدارة الكوبونات
+                </h1>
+                <p class="text-blue-100">آمن • متقدم • موثوق</p>
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+            <!-- Alert Container -->
+            <div id="alertContainer" class="mb-6"></div>
+
+            <!-- Connection Status -->
+            <div id="statusBar" class="glass-effect rounded-lg shadow-lg p-4 mb-6 hidden">
+                <div class="flex items-center gap-3">
+                    <div class="spinner"></div>
+                    <div>
+                        <p class="font-semibold text-gray-700" id="statusText">جاري الاتصال بالخادم...</p>
+                        <p class="text-xs text-gray-500" id="statusDetail"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Container -->
+            <div class="glass-effect rounded-lg shadow-2xl p-6 mb-6">
+                <div class="text-center py-12">
+                    <i class="fas fa-shield-alt text-6xl text-blue-500 mb-4"></i>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">مرحباً بك في نظام الكوبونات الآمن</h2>
+                    <p class="text-gray-600 mb-6 max-w-lg mx-auto">
+                        هذا النظام يوفر لك إدارة آمنة وسهلة للكوبونات الورقية مع تشفير عالي المستوى وتتبع كامل للتعديلات
+                    </p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                        <div class="bg-blue-50 rounded-lg p-4">
+                            <i class="fas fa-lock text-2xl text-blue-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-gray-700">تشفير عالي</p>
+                            <p class="text-xs text-gray-500">NaCl Encryption</p>
+                        </div>
+                        <div class="bg-green-50 rounded-lg p-4">
+                            <i class="fas fa-sync-alt text-2xl text-green-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-gray-700">إصدارات</p>
+                            <p class="text-xs text-gray-500">تتبع التعديلات</p>
+                        </div>
+                        <div class="bg-purple-50 rounded-lg p-4">
+                            <i class="fas fa-server text-2xl text-purple-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-gray-700">Supabase</p>
+                            <p class="text-xs text-gray-500">قاعدة بيانات آمنة</p>
+                        </div>
+                        <div class="bg-yellow-50 rounded-lg p-4">
+                            <i class="fas fa-cloud-upload-alt text-2xl text-yellow-600 mb-2"></i>
+                            <p class="text-sm font-semibold text-gray-700">السحابة</p>
+                            <p class="text-xs text-gray-500">Vercel Deploy</p>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-8">
+                        <h3 class="text-xl font-semibold text-gray-800 mb-6">خطوات الإعداد الأولية</h3>
+
+                        <div class="max-w-2xl mx-auto">
+                            <div class="mb-6 p-4 bg-yellow-50 rounded-lg border-r-4 border-yellow-500">
+                                <p class="font-semibold text-yellow-900 mb-2">
+                                    <i class="fas fa-exclamation-circle ml-2"></i>ملاحظة مهمة
+                                </p>
+                                <p class="text-sm text-yellow-800">
+                                    هذه النسخة المتقدمة تتطلب إعداد Supabase. إذا كنت تريد نسخة محلية بسيطة، استخدم <strong>coupons.html</strong>
+                                </p>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div class="text-left">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">1</div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-800">إنشاء حساب Supabase</h4>
+                                            <p class="text-sm text-gray-600 mt-1">اذهب إلى <a href="https://supabase.com" class="text-blue-600 hover:underline" target="_blank">supabase.com</a> وأنشئ حسابك</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-left">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">2</div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-800">نسخ مفاتيح API</h4>
+                                            <p class="text-sm text-gray-600 mt-1">انسخ URL و Anon Key من إعدادات المشروع في Supabase</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-left">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">3</div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-800">إنشاء جداول قاعدة البيانات</h4>
+                                            <p class="text-sm text-gray-600 mt-1">استخدم SQL Editor وشغّل الأوامر من ملف <strong>COUPONS_SETUP.md</strong></p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-left">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">4</div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-800">إدخال المفاتيح</h4>
+                                            <p class="text-sm text-gray-600 mt-1">أضفت الحقول أدناه - أدخل المفاتيح وحفظ الإعدادات</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-left">
+                                    <div class="flex items-start gap-3">
+                                        <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">5</div>
+                                        <div>
+                                            <h4 class="font-semibold text-gray-800">النشر على Vercel</h4>
+                                            <p class="text-sm text-gray-600 mt-1">اتبع تعليمات الملف <strong>COUPONS_SETUP.md</strong> للنشر</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-8 mt-8">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">إعدادات Supabase</h3>
+
+                        <div class="max-w-md mx-auto space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">رابط Supabase URL</label>
+                                <input type="text" id="supabaseUrl"
+                                    placeholder="https://xxxxx.supabase.co"
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+                                <p class="text-xs text-gray-500 mt-1">من Settings → API → Project URL</p>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Anon Key</label>
+                                <input type="password" id="supabaseKey"
+                                    placeholder="eyJhbGciOiJIUzI1NiIs..."
+                                    class="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none">
+                                <p class="text-xs text-gray-500 mt-1">من Settings → API → Anon Key</p>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button onclick="testConnection()" class="btn-primary flex-1">
+                                    <i class="fas fa-plug ml-2"></i>اختبر الاتصال
+                                </button>
+                                <button onclick="saveSettings()" class="btn-primary flex-1">
+                                    <i class="fas fa-save ml-2"></i>حفظ الإعدادات
+                                </button>
+                            </div>
+
+                            <button onclick="useLocalVersion()" class="w-full border-2 border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50">
+                                <i class="fas fa-download ml-2"></i>استخدم النسخة المحلية بدلاً من ذلك
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-8 mt-8">
+                        <p class="text-gray-600 text-sm">
+                            اقرأ ملف <strong>COUPONS_SETUP.md</strong> للحصول على تعليمات مفصلة
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let supabase = null;
+
+        // Load saved settings
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUrl = localStorage.getItem('supabase_url');
+            const savedKey = localStorage.getItem('supabase_key');
+
+            if (savedUrl) document.getElementById('supabaseUrl').value = savedUrl;
+            if (savedKey) {
+                document.getElementById('supabaseKey').value = '••••••••••••••••';
+                // Try to connect with saved settings
+                initSupabase(savedUrl, savedKey);
+            }
+        });
+
+        function showAlert(message, type = 'info') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = type === 'success' ? 'alert-success' : (type === 'error' ? 'alert-error' : 'alert-info');
+            const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
+
+            const alert = document.createElement('div');
+            alert.className = `alert ${alertClass}`;
+            alert.innerHTML = `<i class="fas ${icon} ml-2"></i>${message}`;
+
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        function showStatus(text, detail = '') {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.classList.remove('hidden');
+            document.getElementById('statusText').textContent = text;
+            document.getElementById('statusDetail').textContent = detail;
+        }
+
+        function hideStatus() {
+            document.getElementById('statusBar').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const url = document.getElementById('supabaseUrl').value.trim();
+            const key = document.getElementById('supabaseKey').value.trim();
+
+            if (!url || !key || key.includes('•')) {
+                showAlert('يرجى إدخال رابط Supabase و Anon Key', 'error');
+                return;
+            }
+
+            localStorage.setItem('supabase_url', url);
+            localStorage.setItem('supabase_key', key);
+
+            showAlert('تم حفظ الإعدادات بنجاح!', 'success');
+            initSupabase(url, key);
+        }
+
+        function initSupabase(url, key) {
+            try {
+                supabase = window.supabase.createClient(url, key);
+                showStatus('جاري الاتصال بـ Supabase...', 'بدء الاتصال');
+            } catch (error) {
+                showAlert('خطأ في إنشاء اتصال Supabase: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        async function testConnection() {
+            if (!supabase) {
+                showAlert('يرجى حفظ الإعدادات أولاً', 'error');
+                return;
+            }
+
+            showStatus('اختبار الاتصال بـ Supabase...', '');
+
+            try {
+                const { data, error } = await supabase
+                    .from('coupons')
+                    .select('count', { count: 'exact', head: true });
+
+                if (error) throw error;
+
+                hideStatus();
+                showAlert(`✓ اتصال ناجح! هناك ${data?.count || 0} كوبون في قاعدة البيانات`, 'success');
+            } catch (error) {
+                hideStatus();
+                showAlert(`✗ خطأ في الاتصال: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+
+        function useLocalVersion() {
+            if (confirm('هل تريد الذهاب إلى النسخة المحلية (coupons.html)؟')) {
+                window.location.href = 'coupons.html';
+            }
+        }
+    </script>
+</body>
+</html>

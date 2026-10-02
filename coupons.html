@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="نظام إدارة الكوبونات الورقية - Coupon Management System">
+    <meta name="theme-color" content="#2563eb">
+
+    <title>نظام إدارة الكوبونات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tweetnacl@1.0.3/nacl-fast.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@9.0.0/dist/umd/uuidv4.min.js"></script>
+
+    <style>
+        * {
+            transition: all 0.3s ease;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .coupon-card {
+            border-left: 4px solid #2563eb;
+            transition: all 0.3s ease;
+        }
+
+        .coupon-card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .badge-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-new {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-paid {
+            background: #dbeafe;
+            color: #0c4a6e;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .input-field {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: #dcfce7;
+            color: #166534;
+            border-right: 3px solid #22c55e;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #7f1d1d;
+            border-right: 3px solid #ef4444;
+        }
+
+        .grid-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .grid-form.full {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 600px) {
+            .grid-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .serial-display {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #2563eb;
+            font-size: 16px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen py-8 px-4">
+        <!-- Header -->
+        <div class="mb-8">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-bold text-white mb-2">
+                    <i class="fas fa-ticket-alt ml-2"></i>نظام إدارة الكوبونات
+                </h1>
+                <p class="text-blue-100">إدارة آمنة وسهلة للكوبونات الورقية</p>
+            </div>
+        </div>
+
+        <div class="max-w-6xl mx-auto">
+            <!-- Alert Container -->
+            <div id="alertContainer" class="mb-6"></div>
+
+            <!-- Main Container -->
+            <div class="glass-effect rounded-lg shadow-2xl p-6 mb-6">
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
+                        <div class="text-sm text-blue-600 font-semibold mb-1">إجمالي الكوبونات</div>
+                        <div class="text-3xl font-bold text-blue-900" id="totalCount">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
+                        <div class="text-sm text-green-600 font-semibold mb-1">المسددة</div>
+                        <div class="text-3xl font-bold text-green-900" id="paidCount">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4">
+                        <div class="text-sm text-yellow-600 font-semibold mb-1">قيد الانتظار</div>
+                        <div class="text-3xl font-bold text-yellow-900" id="pendingCount">0</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4">
+                        <div class="text-sm text-purple-600 font-semibold mb-1">الإجمالي (ر.س)</div>
+                        <div class="text-3xl font-bold text-purple-900" id="totalValue">0</div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-3 mb-8">
+                    <button onclick="openAddModal()" class="btn-primary">
+                        <i class="fas fa-plus ml-2"></i>إضافة كوبون جديد
+                    </button>
+                    <button onclick="exportData()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold">
+                        <i class="fas fa-download ml-2"></i>تصدير بصيغة Excel
+                    </button>
+                    <button onclick="refreshData()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold">
+                        <i class="fas fa-sync ml-2"></i>تحديث
+                    </button>
+                    <button onclick="clearAllData()" class="btn-danger" id="clearBtn">
+                        <i class="fas fa-trash ml-2"></i>مسح الكل
+                    </button>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" id="searchInput" placeholder="ابحث برقم الكوبون أو الشركة..." class="input-field" onkeyup="filterCoupons()">
+                    <select id="statusFilter" class="input-field" onchange="filterCoupons()">
+                        <option value="">جميع الحالات</option>
+                        <option value="غير مستخدم">غير مستخدم</option>
+                        <option value="مسدد">مسدد</option>
+                        <option value="قيد الانتظار">قيد الانتظار</option>
+                    </select>
+                    <select id="paymentTypeFilter" class="input-field" onchange="filterCoupons()">
+                        <option value="">جميع أنواع الدفع</option>
+                        <option value="شيك">شيك</option>
+                        <option value="تحويل بنكي">تحويل بنكي</option>
+                        <option value="نقدي">نقدي</option>
+                    </select>
+                </div>
+
+                <!-- Coupons List -->
+                <div id="couponsList" class="space-y-4">
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3 block"></i>
+                        <p>لا توجد كوبونات بعد. اضغط على "إضافة كوبون جديد"</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="couponModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold gradient-text" id="modalTitle">إضافة كوبون جديد</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <form id="couponForm" onsubmit="saveCoupon(event)">
+                <div class="grid-form full">
+                    <!-- Date -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">التاريخ (تاريخ العملية) *</label>
+                        <input type="date" id="couponDate" class="input-field w-full" required>
+                    </div>
+
+                    <!-- Serial Number -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">الرقم التسلسلي *</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="couponSerial" class="input-field flex-1 serial-display" readonly placeholder="يتم إنشاؤه تلقائياً">
+                            <button type="button" class="btn-primary" onclick="generateSerial()">توليد</button>
+                        </div>
+                        <small class="text-gray-500 mt-1 block">10 أرقام عشوائية وآمنة</small>
+                    </div>
+
+                    <!-- Company Name -->
+                    <div class="grid-form full">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">اسم الشركة / الجهة *</label>
+                        <input type="text" id="companyName" class="input-field w-full" placeholder="أدخل اسم الشركة..." required>
+                    </div>
+
+                    <!-- Coupon Type -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">نوع الكوبون *</label>
+                        <input type="text" id="couponType" class="input-field w-full" placeholder="مثل: كوبون خصم، قسيمة شراء..." required>
+                    </div>
+
+                    <!-- Payment Type -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">نوع الدفع *</label>
+                        <select id="paymentType" class="input-field w-full" required>
+                            <option value="">اختر نوع الدفع</option>
+                            <option value="شيك">شيك</option>
+                            <option value="تحويل بنكي">تحويل بنكي</option>
+                            <option value="نقدي">نقدي</option>
+                        </select>
+                    </div>
+
+                    <!-- Coupon Status -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">حالة الكوبون *</label>
+                        <select id="couponStatus" class="input-field w-full" required>
+                            <option value="غير مستخدم">غير مستخدم (متاح بالعهدة)</option>
+                            <option value="مسدد">مسدد</option>
+                            <option value="قيد الانتظار">قيد الانتظار</option>
+                        </select>
+                    </div>
+
+                    <!-- Settlement Status -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">حالة السداد *</label>
+                        <select id="settlementStatus" class="input-field w-full" required>
+                            <option value="مسدد">مسدد ✓</option>
+                            <option value="قيد التسديد">قيد التسديد</option>
+                        </select>
+                    </div>
+
+                    <!-- Quantity -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">عدد الكوبونات (الكمية)</label>
+                        <input type="number" id="couponQuantity" class="input-field w-full" value="1" min="1">
+                    </div>
+
+                    <!-- Price Per Unit -->
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">قيمة الكوبون الواحد (ر.س)</label>
+                        <input type="number" id="couponPrice" class="input-field w-full" step="0.01" value="0.00" oninput="calculateTotal()">
+                    </div>
+
+                    <!-- Total -->
+                    <div class="grid-form full">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">الإجمالي (يحسب تلقائياً)</label>
+                        <input type="number" id="totalPrice" class="input-field w-full bg-gray-50" readonly step="0.01" value="0.00">
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="grid-form full">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">ملاحظات إضافية</label>
+                        <textarea id="notes" class="input-field w-full h-20" placeholder="ملاحظات حول اسم العميل، الحملة الترويجية، أو أي معلومات إضافية..."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-8">
+                    <button type="submit" class="btn-primary flex-1">
+                        <i class="fas fa-save ml-2"></i>حفظ الكوبون
+                    </button>
+                    <button type="button" onclick="closeModal()" class="flex-1 border-2 border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-50">
+                        إلغاء
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View/Edit Details Modal -->
+    <div id="detailsModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold gradient-text">تفاصيل الكوبون</h2>
+                <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div id="detailsContent">
+                <!-- Will be populated dynamically -->
+            </div>
+
+            <div class="flex gap-3 mt-8">
+                <button onclick="editCoupon()" class="btn-primary flex-1">
+                    <i class="fas fa-edit ml-2"></i>تعديل
+                </button>
+                <button onclick="deleteCoupon()" class="btn-danger flex-1">
+                    <i class="fas fa-trash ml-2"></i>حذف
+                </button>
+                <button onclick="closeDetailsModal()" class="flex-1 border-2 border-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold">
+                    إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize
+        let couponsDB = [];
+        let currentEditId = null;
+        let detailsViewId = null;
+        const ENCRYPTION_KEY = 'safe-coupons-system-2024'; // مفتاح التشفير
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTodayDate();
+            loadCouponsFromStorage();
+            displayCoupons();
+            updateStats();
+        });
+
+        // Set today's date as default
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('couponDate');
+            if (dateInput) dateInput.value = today;
+        }
+
+        // Generate secure 10-digit serial number
+        function generateSerial() {
+            const serial = Math.random().toString().slice(2, 12).padStart(10, '0');
+            document.getElementById('couponSerial').value = serial;
+        }
+
+        // Calculate total price
+        function calculateTotal() {
+            const quantity = parseInt(document.getElementById('couponQuantity').value) || 1;
+            const price = parseFloat(document.getElementById('couponPrice').value) || 0;
+            const total = quantity * price;
+            document.getElementById('totalPrice').value = total.toFixed(2);
+        }
+
+        // Open add modal
+        function openAddModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').textContent = 'إضافة كوبون جديد';
+            document.getElementById('couponForm').reset();
+            setTodayDate();
+            generateSerial();
+            document.getElementById('couponQuantity').value = '1';
+            document.getElementById('couponPrice').value = '0.00';
+            document.getElementById('totalPrice').value = '0.00';
+            document.getElementById('couponModal').classList.add('active');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('couponModal').classList.remove('active');
+            document.getElementById('couponForm').reset();
+            currentEditId = null;
+        }
+
+        // Close details modal
+        function closeDetailsModal() {
+            document.getElementById('detailsModal').classList.remove('active');
+            detailsViewId = null;
+        }
+
+        // Save coupon
+        function saveCoupon(e) {
+            e.preventDefault();
+
+            const coupon = {
+                id: currentEditId || generateId(),
+                date: document.getElementById('couponDate').value,
+                serial: document.getElementById('couponSerial').value,
+                company: document.getElementById('companyName').value,
+                type: document.getElementById('couponType').value,
+                paymentType: document.getElementById('paymentType').value,
+                status: document.getElementById('couponStatus').value,
+                settlementStatus: document.getElementById('settlementStatus').value,
+                quantity: parseInt(document.getElementById('couponQuantity').value),
+                price: parseFloat(document.getElementById('couponPrice').value),
+                total: parseFloat(document.getElementById('totalPrice').value),
+                notes: document.getElementById('notes').value,
+                createdAt: currentEditId ? (couponsDB.find(c => c.id === currentEditId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                version: currentEditId ? (couponsDB.find(c => c.id === currentEditId)?.version || 1) + 1 : 1
+            };
+
+            if (currentEditId) {
+                const index = couponsDB.findIndex(c => c.id === currentEditId);
+                if (index !== -1) {
+                    couponsDB[index] = coupon;
+                    showAlert('تم تحديث الكوبون بنجاح! الإصدار: v' + coupon.version, 'success');
+                }
+            } else {
+                couponsDB.push(coupon);
+                showAlert('تم إضافة الكوبون بنجاح!', 'success');
+            }
+
+            saveCouponsToStorage();
+            displayCoupons();
+            updateStats();
+            closeModal();
+        }
+
+        // Open edit modal
+        function editCoupon(id) {
+            const coupon = couponsDB.find(c => c.id === (id || detailsViewId));
+            if (!coupon) return;
+
+            currentEditId = coupon.id;
+            document.getElementById('modalTitle').textContent = `تعديل الكوبون - الإصدار ${coupon.version}`;
+
+            document.getElementById('couponDate').value = coupon.date;
+            document.getElementById('couponSerial').value = coupon.serial;
+            document.getElementById('companyName').value = coupon.company;
+            document.getElementById('couponType').value = coupon.type;
+            document.getElementById('paymentType').value = coupon.paymentType;
+            document.getElementById('couponStatus').value = coupon.status;
+            document.getElementById('settlementStatus').value = coupon.settlementStatus;
+            document.getElementById('couponQuantity').value = coupon.quantity;
+            document.getElementById('couponPrice').value = coupon.price;
+            document.getElementById('totalPrice').value = coupon.total;
+            document.getElementById('notes').value = coupon.notes;
+
+            closeDetailsModal();
+            document.getElementById('couponModal').classList.add('active');
+        }
+
+        // Delete coupon
+        function deleteCoupon(id) {
+            const targetId = id || detailsViewId;
+            if (!confirm('هل أنت متأكد من حذف هذا الكوبون؟')) return;
+
+            couponsDB = couponsDB.filter(c => c.id !== targetId);
+            saveCouponsToStorage();
+            displayCoupons();
+            updateStats();
+            closeDetailsModal();
+            showAlert('تم حذف الكوبون بنجاح', 'success');
+        }
+
+        // View coupon details
+        function viewDetails(id) {
+            detailsViewId = id;
+            const coupon = couponsDB.find(c => c.id === id);
+            if (!coupon) return;
+
+            const statusClass = coupon.status === 'مسدد' ? 'status-paid' : (coupon.status === 'قيد الانتظار' ? 'status-pending' : 'status-new');
+            const settlementClass = coupon.settlementStatus === 'مسدد' ? 'text-green-600' : 'text-yellow-600';
+
+            let html = `
+                <div class="space-y-4">
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">التاريخ</p>
+                                <p class="font-semibold">${coupon.date}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">الرقم التسلسلي</p>
+                                <p class="font-mono font-bold text-blue-600">${coupon.serial}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">الإصدار</p>
+                                <span class="version-badge">v${coupon.version}</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">آخر تحديث</p>
+                                <p class="text-sm">${new Date(coupon.updatedAt).toLocaleString('ar-SA')}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <h3 class="font-semibold mb-3">معلومات الكوبون</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">الشركة/الجهة</p>
+                                <p class="font-semibold text-gray-800">${coupon.company}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">نوع الكوبون</p>
+                                <p class="font-semibold text-gray-800">${coupon.type}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">نوع الدفع</p>
+                                <p class="font-semibold text-gray-800">${coupon.paymentType}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-4">
+                        <h3 class="font-semibold mb-3">الحالة والمبلغ</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">حالة الكوبون</p>
+                                <span class="badge-status ${statusClass}">${coupon.status}</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">حالة السداد</p>
+                                <span class="badge-status ${settlementClass} bg-opacity-10">${coupon.settlementStatus}</span>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">الكمية</p>
+                                <p class="font-semibold">${coupon.quantity}</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500 mb-1">السعر الواحد</p>
+                                <p class="font-semibold">${coupon.price.toFixed(2)} ر.س</p>
+                            </div>
+                            <div class="col-span-2 bg-blue-50 rounded p-3">
+                                <p class="text-xs text-gray-500 mb-1">الإجمالي</p>
+                                <p class="text-2xl font-bold text-blue-600">${coupon.total.toFixed(2)} ر.س</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${coupon.notes ? `
+                    <div class="border-t pt-4">
+                        <h3 class="font-semibold mb-2">ملاحظات</h3>
+                        <p class="text-gray-700 text-sm bg-yellow-50 p-3 rounded">${coupon.notes}</p>
+                    </div>
+                    ` : ''}
+                </div>
+            `;
+
+            document.getElementById('detailsContent').innerHTML = html;
+            document.getElementById('detailsModal').classList.add('active');
+        }
+
+        // Display coupons
+        function displayCoupons(couponsToDisplay = couponsDB) {
+            const couponsList = document.getElementById('couponsList');
+
+            if (couponsToDisplay.length === 0) {
+                couponsList.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-3 block"></i>
+                        <p>لا توجد كوبونات بعد. اضغط على "إضافة كوبون جديد"</p>
+                    </div>
+                `;
+                return;
+            }
+
+            couponsList.innerHTML = couponsToDisplay.map(coupon => {
+                const statusClass = coupon.status === 'مسدد' ? 'status-paid' : (coupon.status === 'قيد الانتظار' ? 'status-pending' : 'status-new');
+
+                return `
+                    <div class="coupon-card bg-white rounded-lg p-5 border-l-4 border-blue-500">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800">${coupon.company}</h3>
+                                <p class="text-sm text-gray-500">
+                                    <i class="fas fa-barcode ml-1"></i>
+                                    <span class="serial-display">${coupon.serial}</span>
+                                </p>
+                            </div>
+                            <span class="badge-status ${statusClass}">${coupon.status}</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 text-sm">
+                            <div>
+                                <p class="text-gray-500 text-xs mb-1">النوع</p>
+                                <p class="font-semibold">${coupon.type}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs mb-1">الدفع</p>
+                                <p class="font-semibold">${coupon.paymentType}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs mb-1">التاريخ</p>
+                                <p class="font-semibold">${coupon.date}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-500 text-xs mb-1">الإجمالي</p>
+                                <p class="font-bold text-blue-600">${coupon.total.toFixed(2)} ر.س</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="viewDetails('${coupon.id}')" class="flex-1 bg-blue-50 text-blue-600 px-3 py-2 rounded font-semibold text-sm hover:bg-blue-100">
+                                <i class="fas fa-eye ml-1"></i>عرض التفاصيل
+                            </button>
+                            <button onclick="editCoupon('${coupon.id}')" class="bg-green-50 text-green-600 px-3 py-2 rounded font-semibold text-sm hover:bg-green-100">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteCoupon('${coupon.id}')" class="bg-red-50 text-red-600 px-3 py-2 rounded font-semibold text-sm hover:bg-red-100">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Filter coupons
+        function filterCoupons() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const paymentTypeFilter = document.getElementById('paymentTypeFilter').value;
+
+            const filtered = couponsDB.filter(coupon => {
+                const matchesSearch = coupon.serial.includes(searchTerm) || coupon.company.toLowerCase().includes(searchTerm);
+                const matchesStatus = !statusFilter || coupon.status === statusFilter;
+                const matchesPaymentType = !paymentTypeFilter || coupon.paymentType === paymentTypeFilter;
+
+                return matchesSearch && matchesStatus && matchesPaymentType;
+            });
+
+            displayCoupons(filtered);
+        }
+
+        // Update statistics
+        function updateStats() {
+            const total = couponsDB.length;
+            const paid = couponsDB.filter(c => c.status === 'مسدد').length;
+            const pending = couponsDB.filter(c => c.status === 'قيد الانتظار').length;
+            const totalValue = couponsDB.reduce((sum, c) => sum + c.total, 0);
+
+            document.getElementById('totalCount').textContent = total;
+            document.getElementById('paidCount').textContent = paid;
+            document.getElementById('pendingCount').textContent = pending;
+            document.getElementById('totalValue').textContent = totalValue.toFixed(2);
+        }
+
+        // Generate unique ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        // Save to localStorage
+        function saveCouponsToStorage() {
+            localStorage.setItem('coupons_db', JSON.stringify(couponsDB));
+        }
+
+        // Load from localStorage
+        function loadCouponsFromStorage() {
+            const stored = localStorage.getItem('coupons_db');
+            couponsDB = stored ? JSON.parse(stored) : [];
+        }
+
+        // Refresh data
+        function refreshData() {
+            loadCouponsFromStorage();
+            displayCoupons();
+            updateStats();
+            showAlert('تم تحديث البيانات بنجاح', 'success');
+        }
+
+        // Export to Excel
+        function exportData() {
+            if (couponsDB.length === 0) {
+                showAlert('لا توجد بيانات للتصدير', 'error');
+                return;
+            }
+
+            let csv = 'التاريخ,الرقم التسلسلي,الشركة,نوع الكوبون,نوع الدفع,حالة الكوبون,حالة السداد,الكمية,السعر,الإجمالي,الملاحظات,الإصدار\n';
+
+            couponsDB.forEach(c => {
+                csv += `"${c.date}","${c.serial}","${c.company}","${c.type}","${c.paymentType}","${c.status}","${c.settlementStatus}",${c.quantity},${c.price},${c.total},"${c.notes}",v${c.version}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `كوبونات_${new Date().toISOString().split('T')[0]}.csv`);
+            link.click();
+
+            showAlert('تم تصدير البيانات بنجاح', 'success');
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (!confirm('هل أنت متأكد من حذف جميع الكوبونات؟ هذه العملية لا يمكن التراجع عنها!')) return;
+
+            couponsDB = [];
+            saveCouponsToStorage();
+            displayCoupons();
+            updateStats();
+            showAlert('تم حذف جميع البيانات', 'success');
+        }
+
+        // Show alert
+        function showAlert(message, type = 'success') {
+            const alertContainer = document.getElementById('alertContainer');
+            const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+
+            const alert = document.createElement('div');
+            alert.className = `alert ${alertClass}`;
+            alert.innerHTML = `<i class="fas ${icon} ml-2"></i>${message}`;
+
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        // Add event listener for quantity change
+        document.addEventListener('input', (e) => {
+            if (e.target.id === 'couponQuantity' || e.target.id === 'couponPrice') {
+                calculateTotal();
+            }
+        });
+    </script>
+</body>
+</html>
